@@ -1,168 +1,118 @@
 package main
 
-// A simple example demonstrating the use of multiple text input components
-// from the Bubbles component library.
-
 import (
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-)
-
-var (
-	focusedStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("81"))
-	blurredStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	cursorStyle         = focusedStyle.Copy()
-	noStyle             = lipgloss.NewStyle()
-	helpStyle           = blurredStyle.Copy()
-	cursorModeHelpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
-	buttonGold          = lipgloss.NewStyle().
-				Background(lipgloss.Color("214")).
-				Foreground(lipgloss.Color("232")).Bold(true)
-
-	good          = lipgloss.NewStyle().SetString("bold").Bold(true)
-	focusedButton = buttonGold.Copy().Render("[ TOSS ]")
-	blurredButton = fmt.Sprintf("[ %s ]", buttonGold.Render("{ TOSS }"))
 )
 
 type model struct {
-	focusIndex int
-	inputs     []textinput.Model
-	items      []string
+	choices  []string         // items on the list
+	cursor   int              // which item our cursor pointing at
+	selected map[int]struct{} // which items are selected
+	choice   string           // items selected
 }
 
 func initialModel() model {
-	m := model{
-		inputs: make([]textinput.Model, 2),
+	return model{
+		choices:  []string{"Buy panda", "buy kumar", "buy power", "buy powerpaandi"},
+		selected: make(map[int]struct{}),
 	}
-
-	var t textinput.Model
-	for i := range m.inputs {
-		t = textinput.New()
-		t.CharLimit = 69
-
-		switch i {
-		case 0:
-			t.Placeholder = "Option 1"
-			t.Focus()
-			t.PromptStyle = focusedStyle
-			t.TextStyle = focusedStyle
-		case 1:
-			t.Placeholder = "Option 2"
-		}
-
-		m.inputs[i] = t
-	}
-
-	return m
 }
 
 func (m model) Init() tea.Cmd {
-	return textinput.Blink
+	// Just return `nil`, which means "no I/O right now, please."
+	return nil
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	// Is it a key press?
 	case tea.KeyMsg:
+
+		// Cool, what was the actual key pressed?
 		switch msg.String() {
-		case "ctrl+c", "esc":
+
+		case "g":
+			fmt.Println("you are a TopG")
+
+		case "y":
+			fmt.Println(m.selected)
+			fmt.Println("you are a TopG")
+
+		// These keys should exit the program.
+		case "ctrl+c", "q":
+			fmt.Println(m.selected)
 			return m, tea.Quit
 
-		// Set focus to next input
-		case "tab", "shift+tab", "enter", "up", "down":
-			s := msg.String()
+		// The "up" and "k" keys move the cursor up
+		case "up", "k":
+			if m.cursor > 0 {
+				m.cursor--
+			}
 
-			// Did the user press enter while the submit button was focused?
-			// If so, exit.
-			if s == "enter" && m.focusIndex == len(m.inputs) {
+		// The "down" and "j" keys move the cursor down
+		case "down", "j":
+			if m.cursor < len(m.choices)-1 {
+				m.cursor++
+			}
 
-				fmt.Printf("your selected fate ✨ %s \n", m.inputs[0].Value())
+		// The "enter" key and the spacebar (a literal space) toggle
+		// the selected state for the item that the cursor is pointing at.
+		case "enter", " ":
+			_, ok := m.selected[m.cursor]
+			if ok {
+				delete(m.selected, m.cursor)
+			} else {
+				m.choice = m.choices[m.cursor]
+
+				fmt.Printf("\n---\nYou chose %s!\n", m.choice)
 				return m, tea.Quit
+				m.selected[m.cursor] = struct{}{}
 			}
-
-			if len(m.inputs[m.focusIndex].Value()) > 0 {
-
-				// Cycle indexes
-				if s == "up" || s == "shift+tab" {
-					m.focusIndex--
-				} else {
-					m.focusIndex++
-				}
-
-				if m.focusIndex > len(m.inputs) {
-					m.focusIndex = 0
-				} else if m.focusIndex < 0 {
-					m.focusIndex = len(m.inputs)
-				}
-
-			}
-
-			cmds := make([]tea.Cmd, len(m.inputs))
-			for i := 0; i <= len(m.inputs)-1; i++ {
-				if i == m.focusIndex {
-					// Set focused state
-					cmds[i] = m.inputs[i].Focus()
-					m.inputs[i].PromptStyle = focusedStyle
-					m.inputs[i].TextStyle = focusedStyle
-					continue
-				}
-				// Remove focused state
-				m.inputs[i].Blur()
-				m.inputs[i].PromptStyle = noStyle
-				m.inputs[i].TextStyle = noStyle
-			}
-
-			return m, tea.Batch(cmds...)
 		}
 	}
 
-	// Handle character input and blinking
-	cmd := m.updateInputs(msg)
-
-	return m, cmd
-}
-
-func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
-	cmds := make([]tea.Cmd, len(m.inputs))
-
-	// Only text inputs with Focus() set will respond, so it's safe to simply
-	// update all of them here without any further logic.
-	for i := range m.inputs {
-		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
-	}
-	return tea.Batch(cmds...)
+	// Return the updated model to the Bubble Tea runtime for processing.
+	// Note that we're not returning a command.
+	return m, nil
 }
 
 func (m model) View() string {
-	var b strings.Builder
+	// The header
+	s := "What should we buy at the market?\n\n"
 
-	for i := range m.inputs {
-		b.WriteString(m.inputs[i].View())
-		if i < len(m.inputs)-1 {
-			b.WriteRune('\n')
+	// Iterate over our choices
+	for i, choice := range m.choices {
+
+		// Is the cursor pointing at this choice?
+		cursor := " " // no cursor
+		if m.cursor == i {
+			cursor = ">" // cursor!
 		}
+
+		// Is this choice selected?
+		checked := " " // not selected
+		if m.cursor == i {
+			checked = "x" // selected!
+		}
+
+		// Render the row
+		s += fmt.Sprintf("%s [%s] %s\n", cursor, checked, choice)
 	}
 
-	button := &blurredButton
-	if m.focusIndex == len(m.inputs) {
-		button = &focusedButton
-	}
-	fmt.Fprintf(&b, "\n\n%s\n\n", *button)
+	// The footer
+	s += "\nPress q to quit.\n"
 
-	b.WriteString(helpStyle.Render("Enter Your Choices 📝 and Toss 🪙"))
-
-	return b.String()
+	// Send the UI for rendering
+	return s
 }
 
 func main() {
-	if _, err := tea.NewProgram(initialModel()).Run(); err != nil {
-		fmt.Printf("could not start program: %s\n", err)
+	p := tea.NewProgram(initialModel())
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
-
-	fmt.Println(" \n")
 }
