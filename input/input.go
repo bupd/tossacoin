@@ -1,4 +1,5 @@
-package input
+package main
+
 // A simple example demonstrating the use of multiple text input components
 // from the Bubbles component library.
 
@@ -7,54 +8,51 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var (
-	focusedStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	focusedStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("81"))
 	blurredStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 	cursorStyle         = focusedStyle.Copy()
 	noStyle             = lipgloss.NewStyle()
 	helpStyle           = blurredStyle.Copy()
 	cursorModeHelpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
+	buttonGold          = lipgloss.NewStyle().
+				Background(lipgloss.Color("214")).
+				Foreground(lipgloss.Color("232")).Bold(true)
 
-	focusedButton = focusedStyle.Copy().Render("[ Submit ]")
-	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
+	good          = lipgloss.NewStyle().SetString("bold").Bold(true)
+	focusedButton = buttonGold.Copy().Render("[ TOSS ]")
+	blurredButton = fmt.Sprintf("[ %s ]", buttonGold.Render("{ TOSS }"))
 )
 
 type model struct {
 	focusIndex int
 	inputs     []textinput.Model
-	cursorMode cursor.Mode
+	items      []string
 }
 
 func initialModel() model {
 	m := model{
-		inputs: make([]textinput.Model, 3),
+		inputs: make([]textinput.Model, 2),
 	}
 
 	var t textinput.Model
 	for i := range m.inputs {
 		t = textinput.New()
-		t.Cursor.Style = cursorStyle
-		t.CharLimit = 32
+		t.CharLimit = 69
 
 		switch i {
 		case 0:
-			t.Placeholder = "Nickname"
+			t.Placeholder = "Option 1"
 			t.Focus()
 			t.PromptStyle = focusedStyle
 			t.TextStyle = focusedStyle
 		case 1:
-			t.Placeholder = "Email"
-			t.CharLimit = 64
-		case 2:
-			t.Placeholder = "Password"
-			t.EchoMode = textinput.EchoPassword
-			t.EchoCharacter = '•'
+			t.Placeholder = "Option 2"
 		}
 
 		m.inputs[i] = t
@@ -74,18 +72,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "esc":
 			return m, tea.Quit
 
-		// Change cursor mode
-		case "ctrl+r":
-			m.cursorMode++
-			if m.cursorMode > cursor.CursorHide {
-				m.cursorMode = cursor.CursorBlink
-			}
-			cmds := make([]tea.Cmd, len(m.inputs))
-			for i := range m.inputs {
-				cmds[i] = m.inputs[i].Cursor.SetMode(m.cursorMode)
-			}
-			return m, tea.Batch(cmds...)
-
 		// Set focus to next input
 		case "tab", "shift+tab", "enter", "up", "down":
 			s := msg.String()
@@ -93,20 +79,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Did the user press enter while the submit button was focused?
 			// If so, exit.
 			if s == "enter" && m.focusIndex == len(m.inputs) {
+
+				fmt.Printf("your selected fate ✨ %s \n", m.inputs[0].Value())
 				return m, tea.Quit
 			}
 
-			// Cycle indexes
-			if s == "up" || s == "shift+tab" {
-				m.focusIndex--
-			} else {
-				m.focusIndex++
-			}
+			if len(m.inputs[m.focusIndex].Value()) > 0 {
 
-			if m.focusIndex > len(m.inputs) {
-				m.focusIndex = 0
-			} else if m.focusIndex < 0 {
-				m.focusIndex = len(m.inputs)
+				// Cycle indexes
+				if s == "up" || s == "shift+tab" {
+					m.focusIndex--
+				} else {
+					m.focusIndex++
+				}
+
+				if m.focusIndex > len(m.inputs) {
+					m.focusIndex = 0
+				} else if m.focusIndex < 0 {
+					m.focusIndex = len(m.inputs)
+				}
+
 			}
 
 			cmds := make([]tea.Cmd, len(m.inputs))
@@ -142,7 +134,6 @@ func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
 	for i := range m.inputs {
 		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
 	}
-
 	return tea.Batch(cmds...)
 }
 
@@ -162,9 +153,7 @@ func (m model) View() string {
 	}
 	fmt.Fprintf(&b, "\n\n%s\n\n", *button)
 
-	b.WriteString(helpStyle.Render("cursor mode is "))
-	b.WriteString(cursorModeHelpStyle.Render(m.cursorMode.String()))
-	b.WriteString(helpStyle.Render(" (ctrl+r to change style)"))
+	b.WriteString(helpStyle.Render("Enter Your Choices 📝 and Toss 🪙"))
 
 	return b.String()
 }
@@ -174,4 +163,6 @@ func main() {
 		fmt.Printf("could not start program: %s\n", err)
 		os.Exit(1)
 	}
+
+	fmt.Println(" \n")
 }
