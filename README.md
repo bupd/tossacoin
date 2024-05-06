@@ -3,4 +3,7 @@ TUI for tossing a Coin written in go
 
 ## Sample Video:
 
-![[/2024-05-07_02-24-48.mkv]]
+https://github.com/bupd/tossacoin/assets/89722848/f78676f9-b8be-4069-a85d-88ef8bdbd72e
+
+
+
