@@ -82,7 +82,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// If so, exit.
 			if s == "enter" && m.focusIndex == len(m.inputs) {
 
-				fmt.Printf("your selected fate ✨ %s\n ", m.inputs[randomint.RandomInt(2)].Value())
+				fmt.Printf("\n your selected fate ✨ %s\n ", m.inputs[randomint.RandomInt(2)].Value())
 				m.done = true
 				return m, tea.Quit
 			}
@@ -157,7 +157,7 @@ func (m model) View() string {
 	fmt.Fprintf(&b, "\n\n%s\n\n", *button)
 
 	if m.done {
-		b.Reset()
+		b.WriteString(helpStyle.Render("Result Of your tossacoin 🪙"))
 	} else {
 		b.WriteString(helpStyle.Render("Enter Your Choices 📝 and Toss 🪙"))
 	}
